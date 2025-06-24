@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.services.dataset_service import entrenar_modelo, agregar_datos_excel, eliminar_fila_por_id, actualizar_campo_por_id, obtener_dataset
 from fastapi.responses import FileResponse, JSONResponse, Response
 from app.services.registry_model import MODEL_REGISTRY
 from app.schemas.student_schema import SocialUpdateData, InsertarDatosSocialRequest
+from app.common.middleware import verificar_acceso, verificar_admin
 import os
 import gzip
 import json
@@ -10,7 +11,7 @@ import json
 router = APIRouter(prefix="/dataset")
 
 @router.put("/{modelo_nombre}/actualizar")
-def actualizar_modelo_individual(modelo_nombre: str):
+def actualizar_modelo_individual(modelo_nombre: str, _: None = Depends(verificar_admin)):
     if modelo_nombre not in MODEL_REGISTRY:
         raise HTTPException(status_code=404, detail=f"Modelo '{modelo_nombre}' no encontrado")
 
@@ -29,7 +30,7 @@ def actualizar_modelo_individual(modelo_nombre: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/actualizar-todos")
-def actualizar_todos_modelos():
+def actualizar_todos_modelos(_: None = Depends(verificar_admin)):
     resultados = []
 
     for i, (modelo_nombre, modelo_data) in enumerate(MODEL_REGISTRY.items(), start=1):
@@ -57,7 +58,7 @@ def actualizar_todos_modelos():
     return JSONResponse(content={"modelos_actualizados": resultados})
 
 @router.get("/student/descargar-datos", response_class=FileResponse)
-def descargar_datos():
+def descargar_datos(_: None = Depends(verificar_admin)):
     ruta_archivo = f"app/common/data/students_cleaned.xlsx"
     
     if not os.path.exists(ruta_archivo):
@@ -70,7 +71,7 @@ def descargar_datos():
     )
 
 @router.get("/student/dataset-json")
-def obtener_dataset_json():
+def obtener_dataset_json(_: None = Depends(verificar_acceso)):
     ruta_excel = "app/common/data/students_cleaned.xlsx"
 
     try:
@@ -93,7 +94,7 @@ def obtener_dataset_json():
         raise HTTPException(status_code=500, detail=f"Error al leer el dataset: {str(e)}")
 
 @router.post("/student/agregar-datos")
-def agregar_datos(request: InsertarDatosSocialRequest):
+def agregar_datos(request: InsertarDatosSocialRequest, _: None = Depends(verificar_admin)):
     ruta_excel = "app/common/data/students_cleaned.xlsx"
     try:
         mensaje = agregar_datos_excel(
@@ -108,7 +109,7 @@ def agregar_datos(request: InsertarDatosSocialRequest):
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.put("/student/{student_id}")
-def actualizar(student_id: int, datos: SocialUpdateData):
+def actualizar(student_id: int, datos: SocialUpdateData, _: None = Depends(verificar_admin)):
     ruta_excel = "app/common/data/students_cleaned.xlsx"
     try:
         campos_actualizados = datos.dict(exclude_none=True)
@@ -132,7 +133,7 @@ def actualizar(student_id: int, datos: SocialUpdateData):
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.delete("/student/{student_id}")
-def eliminar(student_id: int):
+def eliminar(student_id: int, _: None = Depends(verificar_admin)):
     ruta_excel = "app/common/data/students_cleaned.xlsx"
     try:
         mensaje = eliminar_fila_por_id(ruta_excel, "Student_ID", student_id)
