@@ -53,7 +53,7 @@ def entrenar_modelo(
 
     return f"Modelo entrenado y guardado en {ruta_modelo}"
 
-def agregar_datos_excel(ruta_excel: str, datos_nuevos: list[dict], nombre_dataset: str = "dataset"):
+def agregar_datos_excel(ruta_excel: str, datos_nuevos: list[dict], nombre_dataset: str = "dataset", no_repite: str = None):
     if not os.path.exists(ruta_excel):
         raise FileNotFoundError(f"Archivo de datos no encontrado en: {ruta_excel}")
     
@@ -62,6 +62,16 @@ def agregar_datos_excel(ruta_excel: str, datos_nuevos: list[dict], nombre_datase
     try:
         df_existente = pd.read_excel(ruta_excel)
         df_nuevos = pd.DataFrame(datos_nuevos)
+
+        if no_repite:
+            if no_repite not in df_existente.columns or no_repite not in df_nuevos.columns:
+                raise ValueError(f"Campo '{no_repite}' no encontrado en los datos existentes o nuevos.")
+
+            duplicados = df_nuevos[no_repite].isin(df_existente[no_repite])
+            if duplicados.any():
+                valores_duplicados = df_nuevos[duplicados][no_repite].tolist()
+                raise ValueError(f"Valores duplicados en el campo '{no_repite}': {valores_duplicados}")
+
         df_actualizado = pd.concat([df_existente, df_nuevos], ignore_index=True)
         df_actualizado.to_excel(ruta_excel, index=False)
         return f"{len(df_nuevos)} registros agregados al {nombre_dataset}"
@@ -120,20 +130,32 @@ def actualizar_campo_por_id(ruta_excel: str, id_columna: str, id_valor: int | st
 
 def hacer_respaldo(ruta_excel: str):
     if not os.path.exists(ruta_excel):
-        return 
+        return
 
-    ultima_mod = datetime.fromtimestamp(os.path.getmtime(ruta_excel))
     ahora = datetime.now()
+    fecha_hoy = ahora.strftime("%Y-%m-%d")
 
-    if (ahora - ultima_mod) >= timedelta(days=1):
-        nombre_archivo = os.path.basename(ruta_excel)
-        nombre_base, ext = os.path.splitext(nombre_archivo)
-        timestamp = ahora.strftime("%Y-%m-%d_%H-%M-%S")
-        nombre_respaldo = f"{nombre_base}_BACKUP_{timestamp}{ext}"
-        ruta_respaldo = os.path.join(os.path.dirname(ruta_excel), nombre_respaldo)
+    nombre_archivo = os.path.basename(ruta_excel)
+    nombre_base, ext = os.path.splitext(nombre_archivo)
+    directorio = os.path.dirname(ruta_excel)
 
-        shutil.copy2(ruta_excel, ruta_respaldo)
-        print(f"Respaldo creado: {ruta_respaldo}")
+    archivos_en_directorio = os.listdir(directorio)
+    respaldos_hoy = [
+        archivo for archivo in archivos_en_directorio
+        if archivo.startswith(f"{nombre_base}_BACKUP_{fecha_hoy}") and archivo.endswith(ext)
+    ]
+
+    if respaldos_hoy:
+        print(f"Ya existe un respaldo para hoy: {respaldos_hoy[0]}")
+        return
+
+    # Crear respaldo nuevo
+    timestamp = ahora.strftime("%Y-%m-%d_%H-%M-%S")
+    nombre_respaldo = f"{nombre_base}_BACKUP_{timestamp}{ext}"
+    ruta_respaldo = os.path.join(directorio, nombre_respaldo)
+
+    shutil.copy2(ruta_excel, ruta_respaldo)
+    print(f"Respaldo creado: {ruta_respaldo}")
 
 def obtener_dataset(ruta_excel: str) -> pd.DataFrame:
     if not os.path.exists(ruta_excel):

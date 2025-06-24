@@ -94,13 +94,14 @@ def obtener_dataset_json(_: None = Depends(verificar_acceso)):
         raise HTTPException(status_code=500, detail=f"Error al leer el dataset: {str(e)}")
 
 @router.post("/student/agregar-datos")
-def agregar_datos(request: InsertarDatosSocialRequest, _: None = Depends(verificar_admin)):
+def agregar_datos(request: InsertarDatosSocialRequest, _: None = Depends(verificar_acceso)):
     ruta_excel = "app/common/data/students_cleaned.xlsx"
     try:
         mensaje = agregar_datos_excel(
             ruta_excel,
             [d.dict() for d in request.datos],
-            nombre_dataset="dataset estudiantes"
+            nombre_dataset="dataset estudiantes",
+            no_repite="Student_ID"
         )
         return {"mensaje": mensaje}
     except FileNotFoundError as e:
