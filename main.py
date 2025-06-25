@@ -3,6 +3,7 @@ from fastapi.openapi.utils import get_openapi
 from app.services.registry_model import MODEL_REGISTRY
 from app.routers import dataset_router, model_router
 from app.common.middleware import verificar_acceso
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="API de Modelos IA",
@@ -60,3 +61,11 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
