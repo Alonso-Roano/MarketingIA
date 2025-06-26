@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from app.services.dataset_service import entrenar_modelo, agregar_datos_excel, eliminar_fila_por_id, actualizar_campo_por_id, obtener_dataset
 from fastapi.responses import FileResponse, JSONResponse, Response
 from app.services.registry_model import MODEL_REGISTRY
-from app.schemas.student_schema import SocialUpdateData, InsertarDatosSocialRequest
+from app.schemas.student_schema import SocialUpdateData, InsertarDatosSocialRequest, SocialDataRequest
 from app.common.middleware import verificar_acceso, verificar_admin
 import os
+from io import BytesIO
+import pandas as pd
+from typing import List
 import gzip
 import json
 
@@ -108,7 +111,38 @@ def agregar_datos(request: InsertarDatosSocialRequest, _: None = Depends(verific
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+@router.post("/student/cargar-excel")
+async def cargar_excel(
+    archivo: UploadFile = File(...),
+    _: None = Depends(verificar_acceso)
+):
+    try:
+        # Leer el archivo Excel a un DataFrame
+        contenido = await archivo.read()
+        df = pd.read_excel(BytesIO(contenido))
+
+        # Convertir el DataFrame a una lista de dicts
+        datos_dict = df.to_dict(orient="records")
+
+        # Validar y convertir a objetos Pydantic
+        datos_validados = [SocialDataRequest(**d) for d in datos_dict]
+
+        # Llamar a la función original con los datos validados
+        mensaje = agregar_datos_excel(
+            "app/common/data/students_cleaned.xlsx",
+            [d.dict() for d in datos_validados],
+            nombre_dataset="dataset estudiantes",
+            no_repite="Student_ID"
+        )
+
+        return {"mensaje": mensaje}
+
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Error de validación: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error procesando el archivo: {str(e)}")
+
 @router.put("/student/{student_id}")
 def actualizar(student_id: int, datos: SocialUpdateData, _: None = Depends(verificar_admin)):
     ruta_excel = "app/common/data/students_cleaned.xlsx"
