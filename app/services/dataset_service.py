@@ -7,6 +7,7 @@ from sklearn.linear_model import LinearRegression
 from app.common.enums import ModeloTipo, DatasetTipo
 from datetime import datetime, timedelta
 import shutil
+import random
 
 def entrenar_modelo(
     dataset: DatasetTipo,
@@ -53,6 +54,13 @@ def entrenar_modelo(
 
     return f"Modelo entrenado y guardado en {ruta_modelo}"
 
+def generar_id_unico(existentes: set) -> int:
+    for _ in range(100):  # 100 intentos para evitar bucles infinitos
+        nuevo_id = random.randint(10000, 99999)
+        if nuevo_id not in existentes:
+            return nuevo_id
+    raise Exception("No se pudo generar un ID único después de varios intentos")
+
 def agregar_datos_excel(ruta_excel: str, datos_nuevos: list[dict], nombre_dataset: str = "dataset", no_repite: str = None):
     if not os.path.exists(ruta_excel):
         raise FileNotFoundError(f"Archivo de datos no encontrado en: {ruta_excel}")
@@ -67,10 +75,18 @@ def agregar_datos_excel(ruta_excel: str, datos_nuevos: list[dict], nombre_datase
             if no_repite not in df_existente.columns or no_repite not in df_nuevos.columns:
                 raise ValueError(f"Campo '{no_repite}' no encontrado en los datos existentes o nuevos.")
 
-            duplicados = df_nuevos[no_repite].isin(df_existente[no_repite])
-            if duplicados.any():
-                valores_duplicados = df_nuevos[duplicados][no_repite].tolist()
-                raise ValueError(f"Valores duplicados en el campo '{no_repite}': {valores_duplicados}")
+            ids_existentes = set(df_existente[no_repite].astype(int).tolist())
+            ids_nuevos = df_nuevos[no_repite].astype(int).tolist()
+
+            nuevos_ids_generados = []
+            for original_id in ids_nuevos:
+                if original_id in ids_existentes or original_id in nuevos_ids_generados:
+                    nuevo_id = generar_id_unico(ids_existentes.union(nuevos_ids_generados))
+                    nuevos_ids_generados.append(nuevo_id)
+                else:
+                    nuevos_ids_generados.append(original_id)
+
+            df_nuevos[no_repite] = nuevos_ids_generados
 
         df_actualizado = pd.concat([df_existente, df_nuevos], ignore_index=True)
         df_actualizado.to_excel(ruta_excel, index=False)
