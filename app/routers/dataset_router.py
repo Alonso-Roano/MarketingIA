@@ -115,7 +115,7 @@ def agregar_datos(request: InsertarDatosSocialRequest, _: None = Depends(verific
 @router.post("/student/cargar-excel")
 async def cargar_excel(
     archivo: UploadFile = File(...),
-    _: None = Depends(verificar_acceso)
+    _: None = Depends(verificar_admin)
 ):
     try:
         # Leer el archivo Excel a un DataFrame
