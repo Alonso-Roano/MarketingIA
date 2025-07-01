@@ -118,24 +118,45 @@ async def cargar_excel(
     _: None = Depends(verificar_admin)
 ):
     try:
-        # Leer el archivo Excel a un DataFrame
         contenido = await archivo.read()
         df = pd.read_excel(BytesIO(contenido))
 
-        # Convertir el DataFrame a una lista de dicts
+        if df.isnull().values.any():
+            raise HTTPException(
+                status_code=422,
+                detail="El archivo contiene datos vacíos o nulos. Por favor, revisa el archivo."
+            )
+
+        columnas_esperadas = set(SocialDataRequest.__fields__.keys())
+        columnas_archivo = set(df.columns)
+
+        columnas_faltantes = columnas_esperadas - columnas_archivo
+        columnas_extras = columnas_archivo - columnas_esperadas
+
+        if columnas_faltantes:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Faltan columnas en el archivo: {', '.join(columnas_faltantes)}"
+            )
+
+        if columnas_extras:
+            raise HTTPException(
+                status_code=422,
+                detail=f"El archivo contiene columnas no permitidas: {', '.join(columnas_extras)}"
+            )
+
+        df = df[[col for col in SocialDataRequest.__fields__.keys()]]
+
         datos_dict = df.to_dict(orient="records")
 
-        # Validar y convertir a objetos Pydantic
         datos_validados = [SocialDataRequest(**d) for d in datos_dict]
 
-        # Llamar a la función original con los datos validados
         mensaje = agregar_datos_excel(
             "app/common/data/students_cleaned.xlsx",
             [d.dict() for d in datos_validados],
             nombre_dataset="dataset estudiantes",
             no_repite="Student_ID"
         )
-
         return {"mensaje": mensaje}
 
     except ValueError as e:
