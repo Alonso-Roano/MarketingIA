@@ -19,7 +19,13 @@ def actualizar_modelo_individual(modelo_nombre: str, _: None = Depends(verificar
         raise HTTPException(status_code=404, detail=f"Modelo '{modelo_nombre}' no encontrado")
 
     model_info = MODEL_REGISTRY[modelo_nombre]
-    
+
+    if not model_info.get("train_enabled", True):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Entrenamiento deshabilitado para el modelo '{modelo_nombre}'"
+        )
+
     try:
         resultado = entrenar_modelo(
             dataset=model_info["dataset"],
@@ -37,6 +43,14 @@ def actualizar_todos_modelos(_: None = Depends(verificar_admin)):
     resultados = []
 
     for i, (modelo_nombre, modelo_data) in enumerate(MODEL_REGISTRY.items(), start=1):
+        if not modelo_data.get("train_enabled", True):
+            resultados.append({
+                "numero": i,
+                "modelo": modelo_nombre,
+                "resultado": "Entrenamiento omitido (train_enabled=False)"
+            })
+            continue
+
         model_info = modelo_data
         try:
             resultado = entrenar_modelo(

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, Depends
 from fastapi.openapi.utils import get_openapi
 from app.services.registry_model import MODEL_REGISTRY
-from app.routers import dataset_router, model_router
+from app.routers import dataset_router, model_router, laguage_router
 from app.common.middleware import verificar_acceso
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,6 +13,8 @@ app = FastAPI(
 
 # Ruta para modificar el dataset y los modelos
 app.include_router(dataset_router.router, tags=["Datasets"])
+
+app.include_router(laguage_router.router, tags=["Language"])
 
 # Mapear todos los modelos de IA, actualmente esta oculta en el swagger
 app.include_router(model_router.router, tags=["Peticion a modelos"], include_in_schema=False)
