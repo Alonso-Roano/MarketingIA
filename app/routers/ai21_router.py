@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import FastAPI, HTTPException, APIRouter, Depends
 from pydantic import BaseModel
+from app.common.middleware import verificar_acceso
 from typing import List, Optional
 import re
 from app.common.settings import AI21_API_URL, AI21_API_TOKEN_1, AI21_API_TOKEN_2, AI21_API_TOKEN_3
@@ -57,7 +58,7 @@ def construir_prompt(descripcion, rubro, tamano, alcance, palabras_clave):
     return prompt
 
 @router.post("/generar-mision-vision", response_model=MisionVisionResponse)
-def generar_mision_vision(request: EmpresaRequest):
+def generar_mision_vision(request: EmpresaRequest, _: None = Depends(verificar_acceso)):
     prompt = construir_prompt(
         request.descripcion,
         request.rubro,
