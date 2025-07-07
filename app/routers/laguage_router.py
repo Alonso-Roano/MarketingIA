@@ -45,7 +45,7 @@ def validar_conceptos(conceptos):
 def traducir_lista(lista_textos, destino="es"):
     return [traducir_texto(t, destino) for t in lista_textos]
 
-@router.post("/predecir")
+@router.post("/predecir/rubro")
 def predecir_categoria_api(
     entrada: TextoEntrada,
     _: None = Depends(verificar_acceso)
@@ -64,7 +64,7 @@ def predecir_categoria_api(
         "categoria_predicha_es": categoria_predicha_es
     }
 
-@router.post("/predecir_keywords")
+@router.post("/predecir/keywords")
 def predecir_keywords_api(
     entrada: TextoEntrada,
     _: None = Depends(verificar_acceso)
