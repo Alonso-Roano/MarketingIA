@@ -6,8 +6,8 @@ from app.common.middleware import verificar_acceso
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
-    title="API de Modelos IA",
-    description="Predicciones múltiples usando FastAPI",
+    title="API de modelos de Marketig",
+    description="Predicciones de múltiples datos de marketing usando FastAPI",
     version="1.0"
 )
 
