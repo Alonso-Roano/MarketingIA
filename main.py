@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, Depends
 from fastapi.openapi.utils import get_openapi
 from app.services.registry_model import MODEL_REGISTRY
-from app.routers import dataset_router, model_router, laguage_router, ai21_router
+from app.routers import dataset_router, model_router, laguage_router, ai21_router, minios_router
 from app.common.middleware import verificar_acceso
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,6 +17,8 @@ app.include_router(dataset_router.router, tags=["Datasets"])
 app.include_router(laguage_router.router, tags=["Language"])
 
 app.include_router(ai21_router.router, tags=["AI21"])
+
+app.include_router(minios_router.router, tags=["Minios"])
 
 # Mapear todos los modelos de IA, actualmente esta oculta en el swagger
 app.include_router(model_router.router, tags=["Peticion a modelos"], include_in_schema=False)
