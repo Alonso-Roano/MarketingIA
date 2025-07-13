@@ -1,26 +1,34 @@
-from fastapi import Header, HTTPException
-from typing import Optional
-import httpx
-from app.common.settings import TOKEN_URL
+from fastapi import FastAPI, Header, HTTPException, Depends
+from typing import Optional, Dict
+import jwt
+from app.common.settings import SECRET
 
-def verificar_acceso(authorization: Optional[str] = Header(None, include_in_schema=False)):
-    if authorization is None or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Token no enviado o mal formato")
+app = FastAPI()
+
+def verificar_acceso(
+    authorization: Optional[str] = Header(None, include_in_schema=False)
+) -> Dict:
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Header 'Authorization' no enviado.")
+    if not authorization.startswith("Bearer Bearer"):
+        raise HTTPException(status_code=401, detail="Header 'Authorization' debe empezar con 'Bearer '.")
     
-    token = authorization.split(" ")[1]
+    token = authorization.split(" ")[2]
+
+    print(authorization.split(" "))
 
     try:
-        response = httpx.get(
-            TOKEN_URL,
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=10
+        payload = jwt.decode(
+            token,
+            SECRET,
+            algorithms=["HS256"],
+            audience="authenticated"
         )
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=503, detail=f"No se pudo contactar el validador: {str(e)}")
+        print("Token válido. Payload decodificado:")
+        print(payload)
+        return payload
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail="Token inválido o expirado")
-
-    return response.json()
-
-
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado.")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=401, detail=f"Token inválido")
