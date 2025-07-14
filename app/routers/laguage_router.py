@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from app.common.middleware import verificar_acceso
+from app.common.settings import GEMINI_API_KEY, GEMINI_BASE_URL
 import spacy
 import joblib
 import numpy as np
-from googletrans import Translator
+from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -18,14 +19,42 @@ reg = joblib.load("app/models/regressor_model/regressor_model.pkl")
 keyword_embeddings = np.load("app/models/regressor_model/keyword_embeddings.npy")
 all_keywords = joblib.load("app/models/regressor_model/all_keywords.pkl")
 
-translator = Translator()
-
 class TextoEntrada(BaseModel):
     descripcion: str
 
 def traducir_texto(texto, destino="en"):
-    traduccion = translator.translate(texto, dest=destino)
-    return traduccion.text
+    """Traduce texto usando Gemini API"""
+    try:
+        if not GEMINI_API_KEY:
+            raise HTTPException(
+                status_code=500,
+                detail="Gemini API key no configurada"
+            )
+        
+        client = OpenAI(
+            api_key=GEMINI_API_KEY,
+            base_url=GEMINI_BASE_URL
+        )
+        
+        idioma_destino = "English" if destino == "en" else "Spanish"
+        
+        prompt = f"Translate the following text to {idioma_destino}. Only return the translation, nothing else:\n\n{texto}"
+        
+        response = client.chat.completions.create(
+            model="gemini-2.5-flash",
+            messages=[
+                {"role": "system", "content": "You are a professional translator. Translate accurately and return only the translation."},
+                {"role": "user", "content": prompt}
+            ],
+            stream=False,
+            max_tokens=500
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        print(f"Error en traducción: {str(e)}")
+        return texto
 
 def extraer_conceptos(texto, usar_lemma=True):
     doc = nlp(texto)
