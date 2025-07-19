@@ -1,6 +1,5 @@
 from app.common.utils import cargar_modelo, convertir_a_python
 import pandas as pd
-from statistics import mode
 import numpy as np
 import io
 import os
@@ -19,50 +18,48 @@ class ModelService:
         self.input_fields = input_fields
         self.target_field = target_field
         self.metadata = metadata
-        
-        self._cached_df = pd.read_excel(excel_path)
-        self._cached_stats = self._precompute_field_statistics()
-        
-        # Cache para métricas costosas
+
+        self._cached_df = None
+        self._cached_stats = None
         self._cached_metricas = None
         self._cached_info = None
 
+    def _load_dataset(self):
+        if self._cached_df is None:
+            self._cached_df = pd.read_csv(self.excel_path)
+            self._cached_stats = self._precompute_field_statistics()
+
     def _precompute_field_statistics(self):
-        """Precompute mean/mode for each field to use as defaults when field is None"""
         stats = {}
         for field in self.input_fields:
             if field in self._cached_df.columns:
                 column = self._cached_df[field].dropna()
-                
+
                 if column.empty:
                     stats[field] = None
                 elif pd.api.types.is_numeric_dtype(column):
                     stats[field] = column.mean()
                 else:
-                    try:
-                        stats[field] = mode(column)
-                    except:
-                        stats[field] = column.mode().iloc[0] if not column.mode().empty else None
+                    stats[field] = column.mode().iloc[0] if not column.mode().empty else None
             else:
                 stats[field] = None
         return stats
 
     def predecir(self, data: dict):
+        self._load_dataset()
         return self._predecir_optimized(data)
     
     def _predecir_optimized(self, datos_input: dict) -> dict:
-        """Optimized prediction using cached data instead of reading Excel file"""
         datos_completos = {}
 
         for campo in self.input_fields:
             valor = datos_input.get(campo)
-            
             if valor is not None:
                 datos_completos[campo] = valor
             else:
                 datos_completos[campo] = self._cached_stats.get(campo)
 
-        entrada = [[datos_completos[c] for c in self.input_fields]]
+        entrada = pd.DataFrame([datos_completos], columns=self.input_fields)
         pred = self.model.predict(entrada)
 
         resultado = pred.tolist() if isinstance(pred, np.ndarray) else pred
@@ -72,13 +69,12 @@ class ModelService:
         }
 
     def obtener_info(self):
-        """Optimized info method using cached DataFrame"""
+        self._load_dataset()
         if self._cached_info is None:
             self._cached_info = self._compute_info()
         return self._cached_info
 
     def _compute_info(self):
-        """Compute dataset info using cached DataFrame"""
         buffer = io.StringIO()
         self._cached_df.info(buf=buffer)
 
@@ -98,13 +94,12 @@ class ModelService:
         }
 
     def obtener_metricas(self):
-        """Optimized metrics method using cached DataFrame"""
+        self._load_dataset()
         if self._cached_metricas is None:
             self._cached_metricas = self._compute_metricas()
         return self._cached_metricas
 
     def _compute_metricas(self):
-        """Compute model metrics using cached DataFrame"""
         X = self._cached_df[self.input_fields]
         y = self._cached_df[self.target_field]
         y_pred = self.model.predict(X)

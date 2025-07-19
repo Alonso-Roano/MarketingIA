@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header, HTTPException, Depends
+from fastapi import FastAPI, Header, HTTPException
 from typing import Optional, Dict
 import jwt
 from app.common.settings import SECRET
@@ -15,8 +15,6 @@ def verificar_acceso(
     
     token = authorization.split(" ")[2]
 
-    print(authorization.split(" "))
-
     try:
         payload = jwt.decode(
             token,
@@ -24,11 +22,24 @@ def verificar_acceso(
             algorithms=["HS256"],
             audience="authenticated"
         )
-        print("Token válido. Payload decodificado:")
-        print(payload)
         return payload
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expirado.")
     except jwt.InvalidTokenError as e:
         raise HTTPException(status_code=401, detail=f"Token inválido")
+
+def obtener_tokens_autenticacion(
+    authorization: Optional[str] = Header(None, include_in_schema=False),
+    refresh_token: Optional[str] = Header(None, include_in_schema=False)
+) -> tuple[str, str]:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Access token inválido o ausente")
+    
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token ausente")
+    
+
+    access_token = authorization.replace("Bearer ", "")
+    return access_token, refresh_token
+

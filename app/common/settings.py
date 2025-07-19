@@ -1,7 +1,4 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 AI21_API_URL = os.getenv("AI21_API_URL")
 AI21_API_TOKEN_1 = os.getenv("AI21_API_TOKEN_1")
@@ -20,3 +17,7 @@ MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
 # Gemini Configuración
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL")
+
+# Supabase
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_ANONKEY = os.getenv("SUPABASE_ANONKEY")

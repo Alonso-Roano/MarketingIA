@@ -1,0 +1,20 @@
+from pydantic import BaseModel
+class MasterPayload(BaseModel):
+    nombre: str
+    icono: str
+    primary_color: str
+    description: str
+    size: str
+    scope: str
+    industry: str
+    approved_budget: float
+    channel_name_enc: int  
+    clicks: int
+    ext_service_name_enc: int
+    impressions: int
+    no_of_days: int
+    weekday_cat_enc: int
+    channel_name: str
+    ext_service_name: str
+    weekday_cat: str
+    media_cost_usd: float

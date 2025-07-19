@@ -12,9 +12,12 @@ from sklearn.base import RegressorMixin
 import numpy as np
 from statistics import mode
 import numpy as np
+from app.common.settings import GEMINI_API_KEY, GEMINI_BASE_URL
+from openai import OpenAI
+from fastapi import HTTPException
 
 def cargar_modelo(ruta: str):
-    return joblib.load(ruta)
+    return joblib.load(ruta, mmap_mode='r')
 
 def predecir_instancia(modelo, datos_input: dict, ruta_dataset: str, campos: list[str]) -> dict:
     df = pd.read_excel(ruta_dataset)
@@ -123,3 +126,57 @@ def convertir_a_python(obj):
         return [convertir_a_python(elem) for elem in obj]
     else:
         return obj
+
+def crear_payloads_por_modelo(payload_maestro: dict, registry: dict):
+    
+    resultado = {}
+
+    for modelo, config in registry.items():
+        campos_requeridos = config.get("input_fields", [])
+        sub_payload = {}
+        faltantes = []
+
+        for campo in campos_requeridos:
+            if campo in payload_maestro:
+                sub_payload[campo] = payload_maestro[campo]
+            else:
+                faltantes.append(campo)
+
+        resultado[modelo] = {
+            "payload": sub_payload,
+            "faltantes": faltantes
+        }
+
+    return resultado
+
+
+def get_gemini_client():
+    """Crea y configura el cliente OpenAI para usar Gemini API"""
+    if not GEMINI_API_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="Gemini API key no configurada"
+        )
+    
+    return OpenAI(
+        api_key=GEMINI_API_KEY,
+        base_url=GEMINI_BASE_URL
+    )
+
+def enviar_mensaje_a_gemini(system_message: str, user_message: str) -> str:
+    """
+    Envía un mensaje a Gemini y retorna la respuesta.
+    """
+    try:
+        client = get_gemini_client()
+        response = client.chat.completions.create(
+            model="gemini-2.5-flash",
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message},
+            ],
+            stream=False
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        raise RuntimeError(f"Error al comunicarse con Gemini: {str(e)}")
