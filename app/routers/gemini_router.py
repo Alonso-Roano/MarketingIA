@@ -1,9 +1,8 @@
 from fastapi import HTTPException, APIRouter, Depends
 from pydantic import BaseModel
 from app.common.middleware import verificar_acceso
-from app.common.settings import GEMINI_API_KEY, GEMINI_BASE_URL
-from openai import OpenAI
 from typing import Optional
+from app.common.utils import enviar_mensaje_a_gemini, get_gemini_client
 
 router = APIRouter(prefix="/gemini")
 
@@ -14,18 +13,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
 
-def get_gemini_client():
-    """Crea y configura el cliente OpenAI para usar Gemini API"""
-    if not GEMINI_API_KEY:
-        raise HTTPException(
-            status_code=500,
-            detail="Gemini API key no configurada"
-        )
-    
-    return OpenAI(
-        api_key=GEMINI_API_KEY,
-        base_url=GEMINI_BASE_URL
-    )
 
 @router.post("/chat", response_model=ChatResponse)
 def chat_with_gemini(request: ChatRequest, _: None = Depends(verificar_acceso)):
@@ -33,24 +20,15 @@ def chat_with_gemini(request: ChatRequest, _: None = Depends(verificar_acceso)):
     Endpoint para chatear con Gemini
     """
     try:
-        client = get_gemini_client()
-        
-        response = client.chat.completions.create(
-            model="gemini-2.5-flash",
-            messages=[
-                {"role": "system", "content": request.system_message},
-                {"role": "user", "content": request.message},
-            ],
-            stream=False
+        respuesta = enviar_mensaje_a_gemini(
+            system_message=request.system_message,
+            user_message=request.message
         )
-        
-        return ChatResponse(response=response.choices[0].message.content)
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al comunicarse con Gemini: {str(e)}"
-        )
+        return ChatResponse(response=respuesta)
+
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/health")
 def health_check(_: None = Depends(verificar_acceso)):

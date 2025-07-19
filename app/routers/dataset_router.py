@@ -1,10 +1,8 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
-from app.services.registry_model import MODEL_REGISTRY
 from app.common.middleware import verificar_acceso
 import os
-import httpx
+
 router = APIRouter(prefix="/dataset")
 
 @router.get("/marketing/descargar-datos", response_class=FileResponse)
