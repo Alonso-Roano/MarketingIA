@@ -185,8 +185,7 @@ async def upload_file_to_folder(
 @router.get("/minios/get-file")
 async def get_file(
     path: str,
-    expires_days: int = 7,  
-    _: None = Depends(verificar_acceso)
+    expires_days: int = 7,
 ):
     """
     Endpoint para obtener un archivo específico de MinIO con URL pre-firmada

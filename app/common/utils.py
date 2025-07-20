@@ -177,6 +177,8 @@ def enviar_mensaje_a_gemini(system_message: str, user_message: str) -> str:
             ],
             stream=False
         )
+        print("Respuesta cruda de Gemini:")
+        print(response.choices[0].message.content)
         return response.choices[0].message.content
     except Exception as e:
         raise RuntimeError(f"Error al comunicarse con Gemini: {str(e)}")

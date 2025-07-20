@@ -4,6 +4,10 @@ from app.common.middleware import verificar_acceso, obtener_tokens_autenticacion
 from app.schemas.master_payload import MasterPayload
 from app.services.language_service import extraer_conceptos, predecir_keywords
 from app.services.ai21_service import generar_mision_vision_desde_ai21, generar_mision_vision_fake
+from app.services.landing_service import *
+from app.schemas.landingPage_schema import *
+from pydantic import BaseModel
+from typing import Dict
 
 router = APIRouter(prefix="/omni")
 
@@ -111,3 +115,53 @@ def omni(payload_maestro: MasterPayload, _: None = Depends(verificar_acceso), to
         "access_token": new_token,
         "token_updated": new_token != access_token
     }
+
+class GenerarLandingRequest(BaseModel):
+    template_id: str
+    contexto: str
+    urls: Dict[str, str]
+
+@router.post("/landing")
+def generar_landing(request: GenerarLandingRequest, _: None = Depends(verificar_acceso), tokens: tuple[str, str] = Depends(obtener_tokens_autenticacion)):
+    access_token, refresh_token = tokens
+    try:
+        validar_imagenes_input(request.template_id, request.urls)
+
+        esquema = ESQUEMAS_LANDING[request.template_id]
+
+        json_generado = generar_landing_con_gemini(
+            contexto_empresa=request.contexto,
+            esquema=esquema,
+            imagenes=request.urls
+        )
+
+        # Validación semántica (campos correctos, tipos correctos)
+        esquema.model_validate(json_generado)
+
+        # Validación estructural estricta
+        validar_estructura_exacta(json_generado, esquema)
+
+        faltantes = verificar_uso_de_imagenes(json_generado, request.urls)
+        if faltantes:
+            print("⚠️ Gemini no usó las siguientes imágenes:", faltantes)
+
+        try:
+            result, new_token = crear_landing(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                body = {
+                    "template_id": request.template_id,
+                    "data": json_generado
+                }
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    
+        return {
+            "succes": True,
+            "project_id": result["data"]["id"],
+            "access_token": new_token,
+            "token_updated": new_token != access_token
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
