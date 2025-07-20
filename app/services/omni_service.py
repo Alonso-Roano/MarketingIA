@@ -187,3 +187,17 @@ def crear_project_prediction(
     )
 
     return result, new_token
+
+def crear_landing(
+    access_token: str,
+    refresh_token: str,
+    body: dict
+) -> dict:
+    result, new_token = api_request(
+        key="landing.crear",
+        access_token=access_token,
+        refresh_token=refresh_token,
+        data=body
+    )
+
+    return result, new_token
