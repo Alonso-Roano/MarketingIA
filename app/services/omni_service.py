@@ -80,6 +80,7 @@ def interpretar_predicciones_en_contexto(predicciones: dict, descripcion: str, m
         "Eres un analista experto en marketing digital. "
         "Tienes un conjunto de variables predichas para una campaña, y debes generar para cada variable una interpretación"
         "basada en el contexto completo de la campaña. La interpretacion debe de ser del lado del sistema, dirigida al usuario, y debe ser dicha como una recomendacion\n\n"
+        "en el apartado de palabras clave escoge las palabras que resulten relevantes y su puedes añade nuevas utiles para esa campaña de marketing, y claro, agrega la explicacion\n\n"
         "Tu respuesta **debe ser exclusivamente un JSON válido** con esta estructura exacta:\n"
         "{\n"
         "  \"variable1\": {\n"
