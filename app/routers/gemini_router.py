@@ -1,9 +1,11 @@
-from fastapi import HTTPException, APIRouter, Depends
+from fastapi import HTTPException, APIRouter, Depends,  UploadFile, File
 from pydantic import BaseModel
 from app.common.middleware import verificar_acceso
 from typing import Optional
 from app.common.utils import enviar_mensaje_a_gemini, get_gemini_client
-
+import shutil
+import os
+from app.services.gemini_service import generate_campaign_from_pdf
 router = APIRouter(prefix="/gemini")
 
 class ChatRequest(BaseModel):
@@ -59,3 +61,18 @@ def health_check(_: None = Depends(verificar_acceso)):
             status_code=500,
             detail=f"Error de conexión con Gemini: {str(e)}"
         ) 
+    
+@router.post("/extract-from-pdf")
+async def extract_form_fields_from_pdf(
+    file: UploadFile = File(...),
+    _: None = Depends(verificar_acceso)
+):
+    """
+    Extrae texto del PDF y genera sugerencias de formulario con Gemini.
+    """
+    try:
+        json_sugerido = generate_campaign_from_pdf(file)
+        return {"form_fields": json_sugerido}
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

@@ -10,10 +10,11 @@ def verificar_acceso(
 ) -> Dict:
     if authorization is None:
         raise HTTPException(status_code=401, detail="Header 'Authorization' no enviado.")
-    if not authorization.startswith("Bearer Bearer"):
-        raise HTTPException(status_code=401, detail="Header 'Authorization' debe empezar con 'Bearer '.")
     
-    token = authorization.split(" ")[2]
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Header 'Authorization' debe empezar con 'Bearer '.")
+
+    token = authorization.split(" ")[1]  # ahora correctamente toma el token
 
     try:
         payload = jwt.decode(
@@ -28,6 +29,7 @@ def verificar_acceso(
         raise HTTPException(status_code=401, detail="Token expirado.")
     except jwt.InvalidTokenError as e:
         raise HTTPException(status_code=401, detail=f"Token inválido")
+
 
 def obtener_tokens_autenticacion(
     authorization: Optional[str] = Header(None, include_in_schema=False),
