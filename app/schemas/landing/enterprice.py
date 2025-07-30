@@ -4,7 +4,7 @@ from typing import Optional, List, Literal
 class CTAButton(BaseModel):
     text: str
     url: Optional[str] = None
-    variant: Literal['primary', 'secondary', 'outline'] = 'primary'
+    variant: Literal['primary', 'secondary'] = 'primary'
 
 class Feature(BaseModel):
     title: str
